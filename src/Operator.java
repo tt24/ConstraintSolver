@@ -1,3 +1,4 @@
+
 public enum Operator {
-    LESS,MORE,EQ,LEQ,MEQ    
-};
+	PLUS, MINUS, MULTIPLY, DIVIDE
+}

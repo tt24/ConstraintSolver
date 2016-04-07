@@ -4,9 +4,13 @@ import java.util.TreeSet;
 public class DecisionVariable {
     
     private String name;
-    private TreeSet<Integer> domain = new TreeSet<Integer>() {};
+    private TreeSet<Integer> domain = new TreeSet<>();
+    private TreeSet<Integer> checkpointDomain = new TreeSet<>();
     public DecisionVariable(String name, TreeSet<Integer> domain) {
         this.name = name;
+        this.domain = domain;
+    }
+    public DecisionVariable(TreeSet<Integer> domain) {
         this.domain = domain;
     }
     public String getName() {
@@ -18,6 +22,23 @@ public class DecisionVariable {
     public void setDomain(TreeSet<Integer> domain) {
         this.domain= domain;
     }
+    public String toString() {
+    	return name+" "+domain.toString();
+    }
+    public boolean equals(DecisionVariable var) {
+    	return(var.getName().equals(this.name));
+    }
+    public void checkpoint() {
+    	this.checkpointDomain = (TreeSet<Integer>) domain.clone();
+    }
+    public void reverseCheckpoint() {
+    	this.domain = (TreeSet<Integer>) checkpointDomain.clone();
+    }
+    public boolean removeFromDomain(int value) {
+    	domain.remove(value);
+    	return !domain.isEmpty();
+    }
+    
     
     
     

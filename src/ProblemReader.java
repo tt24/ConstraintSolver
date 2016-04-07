@@ -10,28 +10,20 @@ public class ProblemReader {
 	}
 	
 	//[a b c]
-	public static ArrayList<ArrayList>  readMatrix(String s) {
-		ArrayList<ArrayList> matrix = new ArrayList<>();
+	public static TreeSet<Integer>  readList(String s) {
+		TreeSet<Integer> list = new TreeSet<>();
 		s = s.replace("[", "");
 		s = s.replace("]", "");
-		System.out.println(s);
-		String[] rows = s.split(",");
-		for(int i = 0; i<rows.length; i++) {
-			ArrayList<Integer> row = new ArrayList<>();
-			String[] elements = rows[i].split(" ");
-			for(int j = 0; j<elements.length; j++) {
-				if(!elements[j].equals("")) {
-					row.add(Integer.parseInt(elements[j]));
-				}
-			}
-			matrix.add(row);
+		String elements[] = s.split(" ");
+		for(int i = 0; i<elements.length; i++) {
+			list.add(Integer.parseInt(elements[i]));
 		}
-		return matrix;
+		return list;
 	}
 	
 	// int(k..m)
-	public static ArrayList<Integer> readRange(String s) {
-		ArrayList<Integer> range = new ArrayList<>();
+	public static TreeSet<Integer> readRange(String s) {
+		TreeSet<Integer> range = new TreeSet<>();
 		s = s.replace("int(", "");
 		s = s.replace(" ", "");
 		s = s.replace(")", "");
@@ -44,10 +36,23 @@ public class ProblemReader {
 		return range;
 	}
 	
+	public static Matrix createMatrix(String name, int n, int m, TreeSet<Integer> domain) {
+		ArrayList<ArrayList<DecisionVariable>> matrix = new ArrayList<>();
+		for(int i = 0; i<n; i++) {
+			ArrayList<DecisionVariable> row = new ArrayList<>();
+			for(int j = 0; j<m; j++) {
+				row.add(new DecisionVariable(domain));
+			}
+			matrix.add(row);
+		}
+		return new Matrix(name, matrix);		
+	}
+	
 	public static void main(String[] args) {
 		String dom = "int(1-10)";
 		String list = "[1 8 6]";
-		System.out.println(readMatrix(list));
+		TreeSet<Integer> domain = readRange(dom);
+		System.out.println(createMatrix("mm", 3,2,domain));
 	}
 
 }

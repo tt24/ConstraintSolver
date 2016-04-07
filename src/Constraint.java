@@ -1,41 +1,73 @@
 
-import java.beans.DesignMode;
-
-
 public class Constraint {
     
-    private DecisionVariable var1;
-    private DecisionVariable var2;
+    private Expression exp1;
+    private Expression exp2;
     private int value;    
-    private Operator operator;
-    private boolean complex;
+    private Comparator comparator;
+    private boolean binary;
     
-    public Constraint(DecisionVariable name1, DecisionVariable name2, Operator operator) {
-        this.var1= name1;
-        this.var2= name2;
-        this.operator = operator;
-        this.complex = true;
+    public Constraint(Expression exp1, Expression exp2, Comparator operator) {
+        this.exp1= exp1;
+        this.exp2= exp2;
+        this.comparator = operator;
+        this.binary = true;
     }
-    public Constraint(DecisionVariable name1, int value, Operator operator){
-        this.var1 = name1;
+    public Constraint(Expression exp1, int value, Comparator operator){
+        this.exp1 = exp1;
         this.value = value;
-        this.operator = operator;
-        this.complex = false;
+        this.comparator = operator;
+        this.binary = false;
     }
-    public DecisionVariable getVar1(){
-        return this.var1;
+    public Expression getExp1(){
+        return this.exp1;
     }
-    public DecisionVariable getVar2() {
-        return this.var2;
+    public Expression getExp2() {
+        return this.exp2;
     }
     public int getValue() {
         return this.value;
     }
     public boolean getComplex() {
-        return this.complex;
+        return this.binary;
     }
-    public Operator getOperator() {
-        return this.operator;
+    public Comparator getOperator() {
+        return this.comparator;
+    }
+    public boolean containsVar(DecisionVariable var) {
+    	return exp1.getVar().equals(var)||exp2.getVar().equals(var);
+    }
+    
+    public boolean checkComparison(int var1, int var2) {
+    	switch(comparator) {
+    		case MORE:
+    			if(var1>var2)
+    				return true;
+    			break;
+    		case LESS:
+    			if(var1<var2)
+    				return true;
+    			break;
+    		case EQ:
+    			if(var1==var2)
+    				return true;
+    			break;
+    		case NEQ:
+    			if(var1!=var2) 
+    				return true;
+    			break;
+    		case MEQ:
+    			if(var1>=var2) 
+    				return true;
+    			break;
+    		case LEQ:
+    			if(var1<=var2)
+    				return true;
+    			break;
+    		default:
+    			return false;
+    	}
+    	return false;
     }
     
 }
