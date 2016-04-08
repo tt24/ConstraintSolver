@@ -6,6 +6,7 @@ public class DecisionVariable {
     private String name;
     private TreeSet<Integer> domain = new TreeSet<>();
     private TreeSet<Integer> checkpointDomain = new TreeSet<>();
+    private Integer assignedValue = null;
     public DecisionVariable(String name, TreeSet<Integer> domain) {
         this.name = name;
         this.domain = domain;
@@ -34,9 +35,17 @@ public class DecisionVariable {
     public void reverseCheckpoint() {
     	this.domain = (TreeSet<Integer>) checkpointDomain.clone();
     }
-    public boolean removeFromDomain(int value) {
-    	domain.remove(value);
-    	return !domain.isEmpty();
+    public boolean isEmptyDomain() {
+    	return domain.isEmpty();
+    }
+    public void clearAssignment() {
+    	this.assignedValue=null;
+    }
+    public void setAssignedValue(int value) {
+    	this.assignedValue = value;
+    }
+    public Integer getAssignedValue() {
+    	return this.assignedValue;
     }
     
     

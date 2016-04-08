@@ -7,16 +7,16 @@ public class Constraint {
     private Comparator comparator;
     private boolean binary;
     
-    public Constraint(Expression exp1, Expression exp2, Comparator operator) {
+    public Constraint(Expression exp1, Expression exp2, Comparator comparator) {
         this.exp1= exp1;
         this.exp2= exp2;
-        this.comparator = operator;
+        this.comparator = comparator;
         this.binary = true;
     }
-    public Constraint(Expression exp1, int value, Comparator operator){
+    public Constraint(Expression exp1, int value, Comparator comparator){
         this.exp1 = exp1;
         this.value = value;
-        this.comparator = operator;
+        this.comparator = comparator;
         this.binary = false;
     }
     public Expression getExp1(){
@@ -39,6 +39,7 @@ public class Constraint {
     }
     
     public boolean checkComparison(int var1, int var2) {
+    	System.out.println("checking "+var1+ " "+comparator+" "+var2);
     	switch(comparator) {
     		case MORE:
     			if(var1>var2)
@@ -67,6 +68,7 @@ public class Constraint {
     		default:
     			return false;
     	}
+    	System.out.println(" return false");
     	return false;
     }
     
