@@ -21,7 +21,7 @@ public class DecisionVariable {
         return this.domain;
     }
     public void setDomain(TreeSet<Integer> domain) {
-        this.domain= domain;
+        this.domain= (TreeSet<Integer>) domain.clone();
     }
     public String toString() {
     	return name+" "+domain.toString();

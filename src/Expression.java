@@ -38,9 +38,11 @@ public class Expression {
 		Integer varValue;
 		if ((varValue = var.getAssignedValue()) != null) {
 			return solve(varValue);
-		} else {
-			return null;
+		} 
+		if(var.getDomain().size()==1) {
+			return solve(var.getDomain().first());
 		}
+		return null;
 	}
 
 	public Integer solve(int varValue) {

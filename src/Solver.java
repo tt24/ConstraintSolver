@@ -2,7 +2,6 @@
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -18,6 +17,8 @@ public class Solver {
         Iterator<Integer> iterator = var.getDomain().iterator();
         while (iterator.hasNext()) {
             int value = iterator.next();
+            if(value==2 && var.equals(variables.get(0))) 
+            	System.out.println("HERE");
             var.setAssignedValue(value);
             boolean consistent = true;
             for (int future = depth + 1; future < variables.size(); future++) {
@@ -30,14 +31,18 @@ public class Solver {
             if (consistent) {
                 if (depth == variables.size() - 1) {
                     showSolution();
+                    return;
                 } else {
                     forwardChecking(depth + 1);
                 }
             }
+            System.out.println("clear "+var.getName()+" "+value);
             var.clearAssignment();
             for (DecisionVariable reverseVar : savedDomains.keySet()) {
                 reverseVar.setDomain(savedDomains.get(reverseVar));
             }
+            savedDomains.clear();
+            iterator.remove();
         }
     }
 
@@ -85,14 +90,16 @@ public class Solver {
                 return constraint.checkComparison(left, right);
             } else {
                 DecisionVariable rightVar = constraint.getExp2().getVar();
-                if (!checkDomain(constraint, rightVar, left, false)) {
+                System.out.println("Before "+ rightVar);
+                if (!checkDomain(constraint, rightVar, left, false, true, savedDomains)) {
                     return false;
                 }
             }
         } else {
             if (right != null) {
                 DecisionVariable leftVar = constraint.getExp1().getVar();
-                if (!checkDomain(constraint, leftVar, right, true)) {
+                System.out.println("Before "+ leftVar);
+                if (!checkDomain(constraint, leftVar, right, true, true, savedDomains)) {
                     return false;
                 }
             } else {
@@ -101,7 +108,7 @@ public class Solver {
                 Iterator<Integer> iterator = leftVar.getDomain().iterator();
                 while (iterator.hasNext()) {
                     left = constraint.getExp1().solve(iterator.next());
-                    if (!checkDomain(constraint, rightVar, left, false)) {
+                    if (!checkDomain(constraint, rightVar, left, false, false, savedDomains)) {
                         addToSavedDomains(savedDomains, leftVar);
                         if (changed != null) {
                             changed[0] = true;
@@ -115,7 +122,7 @@ public class Solver {
                 iterator = rightVar.getDomain().iterator();
                 while (iterator.hasNext()) {
                     right = constraint.getExp2().solve(iterator.next());
-                    if (!checkDomain(constraint, leftVar, right, true)) {
+                    if (!checkDomain(constraint, leftVar, right, true, false, savedDomains)) {
                         addToSavedDomains(savedDomains, rightVar);
                         if (changed != null) {
                             changed[1] = true;
@@ -134,14 +141,16 @@ public class Solver {
 
     public void addToSavedDomains(HashMap<DecisionVariable, TreeSet<Integer>> savedDomains, DecisionVariable var) {
         if (!savedDomains.containsKey(var)) {
-            savedDomains.put(var, var.getDomain());
+            savedDomains.put(var, (TreeSet<Integer>) var.getDomain().clone());
         }
     }
 
-    public boolean checkDomain(Constraint constraint, DecisionVariable var, int value, boolean order) {
-        System.out.println("check domain " + var.toString() + " " + value + " " + order);
+    public boolean checkDomain(Constraint constraint, DecisionVariable var, int value, boolean order, boolean setVar, HashMap<DecisionVariable, TreeSet<Integer>> savedDomains) {
+        System.out.println("check domain " + var.toString() + " " + value + " " + order + " "+constraint + " "+ setVar);
         TreeSet<Integer> domain = var.getDomain();
         Iterator<Integer> iterator = domain.iterator();
+        boolean result = false;
+        boolean finalResult = false;
         while (iterator.hasNext()) {
             int d = iterator.next();
             int varValue;
@@ -151,22 +160,36 @@ public class Solver {
                 varValue = constraint.getExp2().solve(d);
             }
             System.out.println(d);
-            boolean result;
+            
             if (order) {
                 result = constraint.checkComparison(varValue, value);
             } else {
                 result = constraint.checkComparison(value, varValue);
             }
-            if (result) {
+            finalResult = result ||finalResult;
+            if (!setVar&&result) {
+            	System.out.println("result true");
                 return true;
             }
+            if(setVar&&!result) {
+            	addToSavedDomains(savedDomains, var);
+            	iterator.remove();
+            	System.out.println("removing "+d+" from "+var);
+            	if(domain.isEmpty()) {
+            		System.out.println("emptied domain");
+            		return false;
+            	}
+            }
         }
-        System.out.println("result false");
-        return false;
+        System.out.println("result "+finalResult);
+        return finalResult;
     }
 
     public void showSolution() {
-
+    	System.out.println("Solution");
+    	for(DecisionVariable var: variables) {
+    		System.out.println(var.getName()+ " "+var.getAssignedValue());
+    	}
     }
 
     public boolean nodeConsistency(DecisionVariable var, HashMap<DecisionVariable, TreeSet<Integer>> savedDomains) {
@@ -194,8 +217,8 @@ public class Solver {
 
     public static void main(String[] args) {
         Solver solver = new Solver();
-        Expression x = new Expression(new DecisionVariable("x", ProblemReader.readRange("int(2-5)")), Operator.PLUS, 1,
-                true);
+//        Expression x = new Expression(new DecisionVariable("x", ProblemReader.readRange("int(2-5)")), Operator.PLUS, 1,
+//                true);
 		// Expression y = new Expression(new
         // DecisionVariable("y",ProblemReader.readRange("int(0-1)")),Operator.PLUS,
         // 1, true);
@@ -203,13 +226,20 @@ public class Solver {
         // System.out.println(solver.revise(c));
         // System.out.println(x.getVar());
         // System.out.println(y.getVar());
-        Constraint c1 = new Constraint(x, 6, Comparator.LESS);
-        Constraint c2 = new Constraint(x, 2, Comparator.MORE);
-        solver.unaryConstraints.add(c1);
-        solver.unaryConstraints.add(c2);
-        boolean[] array = {false, true};
-        solver.changeString(array);
-        System.out.println(array[0]);
+//        Constraint c1 = new Constraint(x, 6, Comparator.LESS);
+//        Constraint c2 = new Constraint(x, 2, Comparator.MORE);
+//        solver.unaryConstraints.add(c1);
+//        solver.unaryConstraints.add(c2);
+//        boolean[] array = {false, true};
+//        solver.changeString(array);
+//        System.out.println(array[0]);
+        solver.crystalMaze();
+        System.out.println("set up");
+        solver.showSolution();
+        for(Constraint constraint: solver.constraints) {
+        	System.out.println(constraint);
+        }
+        solver.forwardChecking(0);
     }
 
     public void crystalMaze() {
@@ -219,7 +249,7 @@ public class Solver {
             variables.add(new DecisionVariable(name, ProblemReader.readRange("int(0-7)")));
         }
         for (int i = 0; i < variables.size(); i++) {
-            for (int j = i; j < variables.size(); j++) {
+            for (int j = i+1; j < variables.size(); j++) {
                 Constraint constraint = new Constraint(new Expression(variables.get(i), true), new Expression(variables.get(j), true), Comparator.NEQ);
                 constraints.add(constraint);
             }
@@ -234,6 +264,45 @@ public class Solver {
         constraints.add(new Constraint(ex2, new Expression(variables.get(2), true), Comparator.NEQ));
         constraints.add(new Constraint(ex1, new Expression(variables.get(4), true), Comparator.NEQ));
         constraints.add(new Constraint(ex2, new Expression(variables.get(4), true), Comparator.NEQ));
+        ex1 = new Expression(variables.get(1),Operator.PLUS, 1, true);
+        ex2 = new Expression(variables.get(1),Operator.MINUS, 1, true);
+        constraints.add(new Constraint(ex1, new Expression(variables.get(4), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex2, new Expression(variables.get(4), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex1, new Expression(variables.get(3), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex2, new Expression(variables.get(3), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex1, new Expression(variables.get(5), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex2, new Expression(variables.get(5), true), Comparator.NEQ));
+        ex1 = new Expression(variables.get(2),Operator.PLUS, 1, true);
+        ex2 = new Expression(variables.get(2),Operator.MINUS, 1, true);
+        constraints.add(new Constraint(ex1, new Expression(variables.get(3), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex2, new Expression(variables.get(3), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex1, new Expression(variables.get(6), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex2, new Expression(variables.get(6), true), Comparator.NEQ));
+        ex1 = new Expression(variables.get(3),Operator.PLUS, 1, true);
+        ex2 = new Expression(variables.get(3),Operator.MINUS, 1, true);
+        constraints.add(new Constraint(ex1, new Expression(variables.get(4), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex2, new Expression(variables.get(4), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex1, new Expression(variables.get(7), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex2, new Expression(variables.get(7), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex1, new Expression(variables.get(6), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex2, new Expression(variables.get(6), true), Comparator.NEQ));
+        ex1 = new Expression(variables.get(4),Operator.PLUS, 1, true);
+        ex2 = new Expression(variables.get(4),Operator.MINUS, 1, true);
+        constraints.add(new Constraint(ex1, new Expression(variables.get(5), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex2, new Expression(variables.get(5), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex1, new Expression(variables.get(7), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex2, new Expression(variables.get(7), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex1, new Expression(variables.get(6), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex2, new Expression(variables.get(6), true), Comparator.NEQ));
+        ex1 = new Expression(variables.get(5),Operator.PLUS, 1, true);
+        ex2 = new Expression(variables.get(5),Operator.MINUS, 1, true);
+        constraints.add(new Constraint(ex1, new Expression(variables.get(7), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex2, new Expression(variables.get(7), true), Comparator.NEQ));
+        ex1 = new Expression(variables.get(6),Operator.PLUS, 1, true);
+        ex2 = new Expression(variables.get(6),Operator.MINUS, 1, true);
+        constraints.add(new Constraint(ex1, new Expression(variables.get(7), true), Comparator.NEQ));
+        constraints.add(new Constraint(ex2, new Expression(variables.get(7), true), Comparator.NEQ));
+        
     }
 
 }

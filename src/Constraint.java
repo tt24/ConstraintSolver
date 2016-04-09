@@ -72,4 +72,8 @@ public class Constraint {
     	return false;
     }
     
+    public String toString() {
+    	return exp1.toString() +" "+ comparator+ " "+ exp2.toString();
+    }
+    
 }
