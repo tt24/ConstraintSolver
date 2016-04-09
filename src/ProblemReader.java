@@ -175,5 +175,7 @@ public class ProblemReader {
                 String filename = "check.txt";
                 readProblem(filename);
 	}
-
+        
+        
+ 
 }
