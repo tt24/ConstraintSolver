@@ -32,19 +32,13 @@ public class Solver {
         Iterator<Integer> iterator = var.getDomain().iterator();
         while (iterator.hasNext()) {
             int value = iterator.next();
-            if(value==2 && var.equals(variables.get(0))) {
-                System.out.println("HERE");
-            }
-            if (value == 2 && var.equals(variables.get(0))) {
-                System.out.println("HERE");
-            }
             var.setAssignedValue(value);
             if (checkConsistency(depth, var, savedDomains)) {
                 if (depth == variables.size() - 1) {
                     showSolution();
                     return true;
                 } else {
-                    if(forwardChecking(depth + 1)) {
+                    if (forwardChecking(depth + 1)) {
                         return true;
                     }
                 }
@@ -60,9 +54,9 @@ public class Solver {
         return false;
     }
 
-    public boolean ac3(HashMap<DecisionVariable, TreeSet<Integer>> savedDomains) {
+    public boolean ac3() {
         for (DecisionVariable var : variables) {
-            if (!nodeConsistency(var, savedDomains)) {
+            if (!nodeConsistency(var)) {
                 return false;
             }
             ConcurrentLinkedQueue<Constraint> constraintsToBeRevised = new ConcurrentLinkedQueue<>();
@@ -70,7 +64,7 @@ public class Solver {
             while (!constraintsToBeRevised.isEmpty()) {
                 Constraint constraint = constraintsToBeRevised.poll();
                 boolean[] changed = {false, false};
-                if (!revise(constraint, savedDomains, changed)) {
+                if (!revise(constraint, null, changed)) {
                     return false;
                 } else {
                     if (changed[0]) {
@@ -123,10 +117,7 @@ public class Solver {
                 while (iterator.hasNext()) {
                     left = constraint.getExp1().solve(iterator.next());
                     if (!checkDomain(constraint, rightVar, left, false, false, savedDomains)) {
-                        addToSavedDomains(savedDomains, leftVar);
-                        if (changed != null) {
-                            changed[0] = true;
-                        }
+                        changed[0] = true;
                         iterator.remove();
                         if (leftVar.isEmptyDomain()) {
                             return false;
@@ -137,10 +128,7 @@ public class Solver {
                 while (iterator.hasNext()) {
                     right = constraint.getExp2().solve(iterator.next());
                     if (!checkDomain(constraint, leftVar, right, true, false, savedDomains)) {
-                        addToSavedDomains(savedDomains, rightVar);
-                        if (changed != null) {
-                            changed[1] = true;
-                        }
+                        changed[1] = true;
                         iterator.remove();
                         if (rightVar.isEmptyDomain()) {
                             return false;
@@ -206,14 +194,13 @@ public class Solver {
         }
     }
 
-    public boolean nodeConsistency(DecisionVariable var, HashMap<DecisionVariable, TreeSet<Integer>> savedDomains) {
+    public boolean nodeConsistency(DecisionVariable var) {
         for (Constraint constraint : unaryConstraints) {
             if (constraint.containsVar(var)) {
                 Iterator<Integer> iterator = var.getDomain().iterator();
                 while (iterator.hasNext()) {
                     int varValue = constraint.getExp1().solve(iterator.next());
                     if (!constraint.checkComparison(varValue, constraint.getValue())) {
-                        addToSavedDomains(savedDomains, var);
                         iterator.remove();
                         if (var.isEmptyDomain()) {
                             return false;
@@ -253,8 +240,14 @@ public class Solver {
         for (Constraint constraint : solver.constraints) {
             System.out.println(constraint);
         }
-        solver.forwardChecking(0);
-        solver.showSolution();
+        if (solver.ac3()) {
+            solver.forwardChecking(0);
+            solver.showSolution();
+        }
+        else {
+            System.out.println("No solution found.");
+        }
+
     }
 
     public void crystalMaze() {
