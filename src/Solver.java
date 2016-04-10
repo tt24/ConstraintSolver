@@ -78,7 +78,7 @@ public class Solver {
 
             }
         }
-        return false;
+        return true;
     }
 
     public ConcurrentLinkedQueue<Constraint> addConstraintsToQueue(ConcurrentLinkedQueue<Constraint> constraintsToBeRevised, DecisionVariable var) {
