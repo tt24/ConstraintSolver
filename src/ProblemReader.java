@@ -167,14 +167,6 @@ public class ProblemReader {
             }
         }
 	
-	public static void main(String[] args) throws IOException {
-		String dom = "int(1-10)";
-		String list = "[1 8 6]";
-		TreeSet<Integer> domain = readRange(dom);
-		System.out.println(createMatrix("mm", 3,2,domain));
-                String filename = "check.txt";
-                readProblem(filename);
-	}
         
         
  
