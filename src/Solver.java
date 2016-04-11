@@ -8,95 +8,97 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Solver {
 
-    public boolean checkConsistency(ArrayList<DecisionVariable> variables, ArrayList<Constraint> constraints, int depth,
-            DecisionVariable var, HashMap<DecisionVariable, TreeSet<Integer>> savedDomains) {
-        boolean consistent = true;
-        for (int future = depth + 1; future < variables.size(); future++) {
-            for (Constraint constraint : constraints) {
-                if (constraint.containsVar(variables.get(future)) && constraint.containsVar(var)) {
-                    consistent = revise(constraints, constraint, savedDomains, null);
-                    if (!consistent) {
-                        return false;
-                    }
-                }
-            }
-        }
-        return true;
-    }
+//    public boolean checkConsistency(ArrayList<DecisionVariable> variables, ArrayList<Constraint> constraints, int depth,
+//            DecisionVariable var, HashMap<DecisionVariable, TreeSet<Integer>> savedDomains, int[] experimentData) {
+//        boolean consistent = true;
+//        for (int future = depth + 1; future < variables.size(); future++) {
+//            for (Constraint constraint : constraints) {
+//                if (constraint.containsVar(variables.get(future)) && constraint.containsVar(var)) {
+//                    consistent = revise(constraints, constraint, savedDomains, null, experimentData);
+//                    if (!consistent) {
+//                        return false;
+//                    }
+//                }
+//            }
+//        }
+//        return true;
+//    }
 
-    public boolean checkConsistency(ArrayList<DecisionVariable> variables, ArrayList<Constraint> constraints,
-            DecisionVariable var, HashMap<DecisionVariable, TreeSet<Integer>> savedDomains) {
+    public boolean checkConsistency(ArrayList<DecisionVariable> variables, ArrayList<Constraint> constraints, int depth,
+            DecisionVariable var, HashMap<DecisionVariable, TreeSet<Integer>> savedDomains, int[] experimentData, boolean sdf) {
         boolean consistent = true;
-        for (int future = 0; future < variables.size(); future++) {
-            if (variables.get(future).getAssignedValue() == null) {
+        int future= depth+1;
+        while (future < variables.size()) {
+            if (variables.get(future).getAssignedValue() == null ||!sdf) {
                 for (Constraint constraint : constraints) {
                     if (constraint.containsVar(variables.get(future)) && constraint.containsVar(var)) {
-                        consistent = revise(constraints, constraint, savedDomains, null);
+                        consistent = revise(constraints, constraint, savedDomains, null, experimentData);
                         if (!consistent) {
                             return false;
                         }
                     }
                 }
             }
+            future++;
         }
         return true;
     }
 
-    public boolean forwardChecking(ArrayList<DecisionVariable> variables, ArrayList<Constraint> constraints) {
+    public boolean forwardChecking(ArrayList<DecisionVariable> variables, ArrayList<Constraint> constraints, int[] experimentData) {
         HashMap<DecisionVariable, TreeSet<Integer>> savedDomains = new HashMap<>();
         ArrayList<DecisionVariable> orderedVariables = new ArrayList<>();
-        for(DecisionVariable variable: variables) {
-            if(variable.getAssignedValue()==null) {
+        for (DecisionVariable variable : variables) {
+            if (variable.getAssignedValue() == null) {
                 orderedVariables.add(variable);
             }
         }
-        while(!orderedVariables.isEmpty()){
-        Collections.sort(orderedVariables);
-        DecisionVariable var = orderedVariables.get(0);
-        if(var.getDomain().isEmpty())
-            return false;
-        var.setAssignedValue(var.getDomain().first());
-        if (checkConsistency(variables, constraints, var, savedDomains)) {
-            if (forwardChecking(variables, constraints)) {
-                return true;
+        while (!orderedVariables.isEmpty()) {
+            Collections.sort(orderedVariables);
+            DecisionVariable var = orderedVariables.get(0);
+            if (var.getDomain().isEmpty()) {
+                return false;
             }
-        }
-        System.out.println("clear " + var.getName() + " " + var.getAssignedValue());
-        int value = var.getAssignedValue();
-        var.clearAssignment();
-        for (DecisionVariable reverseVar : savedDomains.keySet()) {
-            reverseVar.setDomain(savedDomains.get(reverseVar));
-        }
-        var.getDomain().remove(value);
-        savedDomains.clear();
-        orderedVariables.clear();
-        for(DecisionVariable variable: variables) {
-            if(variable.getAssignedValue()==null) {
-                orderedVariables.add(variable);
+            var.setAssignedValue(var.getDomain().first());
+            experimentData[0]++;
+            if (checkConsistency(variables, constraints,-1, var, savedDomains, experimentData, true)) {
+                if (forwardChecking(variables, constraints, experimentData)) {
+                    return true;
+                }
             }
-        }
+            int value = var.getAssignedValue();
+            var.clearAssignment();
+            for (DecisionVariable reverseVar : savedDomains.keySet()) {
+                reverseVar.setDomain(savedDomains.get(reverseVar));
+            }
+            var.getDomain().remove(value);
+            savedDomains.clear();
+            orderedVariables.clear();
+            for (DecisionVariable variable : variables) {
+                if (variable.getAssignedValue() == null) {
+                    orderedVariables.add(variable);
+                }
+            }
         }
         return true;
     }
 
-    public boolean forwardChecking(ArrayList<DecisionVariable> variables, ArrayList<Constraint> constraints, int depth) {
+    public boolean forwardChecking(ArrayList<DecisionVariable> variables, ArrayList<Constraint> constraints, int depth, int[] experimentData) {
         HashMap<DecisionVariable, TreeSet<Integer>> savedDomains = new HashMap<>();
         DecisionVariable var = variables.get(depth);
         Iterator<Integer> iterator = var.getDomain().iterator();
         while (iterator.hasNext()) {
             int value = iterator.next();
             var.setAssignedValue(value);
-            if (checkConsistency(variables, constraints, depth, var, savedDomains)) {
+            experimentData[0]++;
+            if (checkConsistency(variables, constraints, depth, var, savedDomains, experimentData, false)) {
                 if (depth == variables.size() - 1) {
-                    showSolution(variables);
                     return true;
                 } else {
-                    if (forwardChecking(variables, constraints, depth + 1)) {
+                    if (forwardChecking(variables, constraints, depth + 1, experimentData)) {
                         return true;
                     }
                 }
             }
-            System.out.println("clear " + var.getName() + " " + value);
             var.clearAssignment();
             for (DecisionVariable reverseVar : savedDomains.keySet()) {
                 reverseVar.setDomain(savedDomains.get(reverseVar));
@@ -108,7 +110,7 @@ public class Solver {
     }
 
     public boolean ac3(ArrayList<DecisionVariable> variables, ArrayList<Constraint> constraints,
-            ArrayList<Constraint> unaryConstraints) {
+            ArrayList<Constraint> unaryConstraints, int[] experimentData) {
         for (DecisionVariable var : variables) {
             if (!nodeConsistency(constraints, unaryConstraints, var)) {
                 return false;
@@ -118,7 +120,7 @@ public class Solver {
             while (!constraintsToBeRevised.isEmpty()) {
                 Constraint constraint = constraintsToBeRevised.poll();
                 boolean[] changed = {false, false};
-                if (!revise(constraints, constraint, null, changed)) {
+                if (!revise(constraints, constraint, null, changed, experimentData)) {
                     return false;
                 } else {
                     if (changed[0]) {
@@ -146,15 +148,15 @@ public class Solver {
     }
 
     public boolean revise(ArrayList<Constraint> constraints, Constraint constraint,
-            HashMap<DecisionVariable, TreeSet<Integer>> savedDomains, boolean[] changed) {
+            HashMap<DecisionVariable, TreeSet<Integer>> savedDomains, boolean[] changed, int[] experimentData) {
         Integer left = constraint.getExp1().solve();
         Integer right = constraint.getExp2().solve();
+        experimentData[1]++;
         if (left != null) {
             if (right != null) {
                 return constraint.checkComparison(left, right);
             } else {
                 DecisionVariable rightVar = constraint.getExp2().getVar();
-                System.out.println("Before " + rightVar);
                 if (!checkDomain(constraints, constraint, rightVar, left, false, true, savedDomains)) {
                     return false;
                 }
@@ -162,7 +164,6 @@ public class Solver {
         } else {
             if (right != null) {
                 DecisionVariable leftVar = constraint.getExp1().getVar();
-                System.out.println("Before " + leftVar);
                 if (!checkDomain(constraints, constraint, leftVar, right, true, true, savedDomains)) {
                     return false;
                 }
@@ -180,6 +181,7 @@ public class Solver {
                         }
                     }
                 }
+                experimentData[1]++;
                 iterator = rightVar.getDomain().iterator();
                 while (iterator.hasNext()) {
                     right = constraint.getExp2().solve(iterator.next());
@@ -205,7 +207,6 @@ public class Solver {
 
     public boolean checkDomain(ArrayList<Constraint> constraints, Constraint constraint, DecisionVariable var,
             int value, boolean order, boolean setVar, HashMap<DecisionVariable, TreeSet<Integer>> savedDomains) {
-        System.out.println("check domain " + var.toString() + " " + value + " " + order + " " + constraint + " " + setVar);
         TreeSet<Integer> domain = var.getDomain();
         Iterator<Integer> iterator = domain.iterator();
         boolean result = false;
@@ -218,7 +219,6 @@ public class Solver {
             } else {
                 varValue = constraint.getExp2().solve(d);
             }
-            // System.out.println(d);
 
             if (order) {
                 result = constraint.checkComparison(varValue, value);
@@ -227,20 +227,16 @@ public class Solver {
             }
             finalResult = result || finalResult;
             if (!setVar && result) {
-                System.out.println("result true");
                 return true;
             }
             if (setVar && !result) {
                 addToSavedDomains(savedDomains, var);
                 iterator.remove();
-                System.out.println("removing " + d + " from " + var);
                 if (domain.isEmpty()) {
-                    System.out.println("emptied domain");
                     return false;
                 }
             }
         }
-        System.out.println("result " + finalResult);
         return finalResult;
     }
 
@@ -275,24 +271,35 @@ public class Solver {
         ArrayList<Constraint> constraints = new ArrayList<>();
         ArrayList<Constraint> unaryConstraints = new ArrayList<>();
         ArrayList<DecisionVariable> variables = new ArrayList<>();
-        ArrayList<DecisionVariable> orderedVariables = new ArrayList<>();
         solver.crystalMaze(variables, constraints, unaryConstraints);
-        orderedVariables = (ArrayList<DecisionVariable>) variables.clone();
-        System.out.println(orderedVariables);
 
-//        if (solver.ac3(variables, constraints, unaryConstraints)) {
-//            solver.forwardChecking(variables, constraints, 0);
+        int[] experimentData = {0, 0};
+        int[] experimentData1 = {0, 0};
+        long startTime = System.currentTimeMillis();
+//        if (solver.ac3(variables, constraints, unaryConstraints, experimentData)) {
+//            solver.forwardChecking(variables, constraints, experimentData1);
 //            solver.showSolution(variables);
 //        } else {
 //            System.out.println("No solution found.");
 //        }
-        
-                if (solver.ac3(variables, constraints, unaryConstraints)) {
-            solver.forwardChecking(variables, constraints);
+        long timeTaken = System.currentTimeMillis() - startTime;
+//        System.out.println("experimentData " + experimentData1[0] + " " + experimentData1[1]);
+//        System.out.println("Time taken: " + timeTaken);
+        //experimentData 148 1133
+
+        int[] experimentData2 = {0, 0};
+        int[] experimentData3 = {0, 0};
+        startTime = System.currentTimeMillis();
+        if (solver.ac3(variables, constraints, unaryConstraints,experimentData2)) {
+            solver.forwardChecking(variables, constraints, 0,experimentData3);
             solver.showSolution(variables);
         } else {
             System.out.println("No solution found.");
         }
+        timeTaken = System.currentTimeMillis() - startTime;
+        System.out.println("experimentData "+experimentData3[0]+ " "+experimentData3[1]);
+        //experimentData 237 1531
+        System.out.println("Time taken: " + timeTaken);
 
     }
 

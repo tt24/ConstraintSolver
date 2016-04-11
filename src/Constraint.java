@@ -39,7 +39,6 @@ public class Constraint {
     }
     
     public boolean checkComparison(int var1, int var2) {
-    	System.out.println("checking "+var1+ " "+comparator+" "+var2);
     	switch(comparator) {
     		case MORE:
     			if(var1>var2)
@@ -68,7 +67,6 @@ public class Constraint {
     		default:
     			return false;
     	}
-    	System.out.println(" return false");
     	return false;
     }
     
