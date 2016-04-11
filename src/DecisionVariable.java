@@ -1,7 +1,7 @@
 import java.util.TreeSet;
 
 
-public class DecisionVariable {
+public class DecisionVariable implements Comparable<DecisionVariable>{
     
     private String name;
     private TreeSet<Integer> domain = new TreeSet<>();
@@ -47,6 +47,10 @@ public class DecisionVariable {
     public Integer getAssignedValue() {
     	return this.assignedValue;
     }
+	@Override
+	public int compareTo(DecisionVariable other) {
+		return Integer.compare(this.domain.size(), other.domain.size());
+	}
     
     
     
