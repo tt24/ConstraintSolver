@@ -3,33 +3,18 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Random;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Solver {
 
-//    public boolean checkConsistency(ArrayList<DecisionVariable> variables, ArrayList<Constraint> constraints, int depth,
-//            DecisionVariable var, HashMap<DecisionVariable, TreeSet<Integer>> savedDomains, int[] experimentData) {
-//        boolean consistent = true;
-//        for (int future = depth + 1; future < variables.size(); future++) {
-//            for (Constraint constraint : constraints) {
-//                if (constraint.containsVar(variables.get(future)) && constraint.containsVar(var)) {
-//                    consistent = revise(constraints, constraint, savedDomains, null, experimentData);
-//                    if (!consistent) {
-//                        return false;
-//                    }
-//                }
-//            }
-//        }
-//        return true;
-//    }
-
     public boolean checkConsistency(ArrayList<DecisionVariable> variables, ArrayList<Constraint> constraints, int depth,
             DecisionVariable var, HashMap<DecisionVariable, TreeSet<Integer>> savedDomains, int[] experimentData, boolean sdf) {
         boolean consistent = true;
-        int future= depth+1;
+        int future = depth + 1;
         while (future < variables.size()) {
-            if (variables.get(future).getAssignedValue() == null ||!sdf) {
+            if (variables.get(future).getAssignedValue() == null || !sdf) {
                 for (Constraint constraint : constraints) {
                     if (constraint.containsVar(variables.get(future)) && constraint.containsVar(var)) {
                         consistent = revise(constraints, constraint, savedDomains, null, experimentData);
@@ -60,24 +45,15 @@ public class Solver {
             }
             var.setAssignedValue(var.getDomain().first());
             experimentData[0]++;
-            if (checkConsistency(variables, constraints,-1, var, savedDomains, experimentData, true)) {
+            if (checkConsistency(variables, constraints, -1, var, savedDomains, experimentData, true)) {
                 if (forwardChecking(variables, constraints, experimentData)) {
                     return true;
                 }
             }
             int value = var.getAssignedValue();
             var.clearAssignment();
-            for (DecisionVariable reverseVar : savedDomains.keySet()) {
-                reverseVar.setDomain(savedDomains.get(reverseVar));
-            }
+            reverseDomains(savedDomains);
             var.getDomain().remove(value);
-            savedDomains.clear();
-            orderedVariables.clear();
-            for (DecisionVariable variable : variables) {
-                if (variable.getAssignedValue() == null) {
-                    orderedVariables.add(variable);
-                }
-            }
         }
         return true;
     }
@@ -100,13 +76,17 @@ public class Solver {
                 }
             }
             var.clearAssignment();
-            for (DecisionVariable reverseVar : savedDomains.keySet()) {
-                reverseVar.setDomain(savedDomains.get(reverseVar));
-            }
-            savedDomains.clear();
+            reverseDomains(savedDomains);
             iterator.remove();
         }
         return false;
+    }
+
+    public void reverseDomains(HashMap<DecisionVariable, TreeSet<Integer>> savedDomains) {
+        for (DecisionVariable reverseVar : savedDomains.keySet()) {
+            reverseVar.setDomain(savedDomains.get(reverseVar));
+        }
+        savedDomains.clear();
     }
 
     public boolean ac3(ArrayList<DecisionVariable> variables, ArrayList<Constraint> constraints,
@@ -266,106 +246,87 @@ public class Solver {
         return true;
     }
 
-    public static void main(String[] args) {
-        Solver solver = new Solver();
+    public void runExperiment(String name) {
+
         ArrayList<Constraint> constraints = new ArrayList<>();
         ArrayList<Constraint> unaryConstraints = new ArrayList<>();
         ArrayList<DecisionVariable> variables = new ArrayList<>();
-        solver.crystalMaze(variables, constraints, unaryConstraints);
+        ProblemReader.crystalMaze(variables, constraints, unaryConstraints);
+        int[] order = new int[variables.size()];
 
+        if (name.equals("best order")) {
+            ArrayList<DecisionVariable> bestOrderVariables = new ArrayList<>();
+            bestOrderVariables.add(variables.get(3));
+            bestOrderVariables.add(variables.get(5));
+            bestOrderVariables.add(variables.get(0));
+            bestOrderVariables.add(variables.get(6));
+            bestOrderVariables.add(variables.get(1));
+            bestOrderVariables.add(variables.get(7));
+            bestOrderVariables.add(variables.get(2));
+            bestOrderVariables.add(variables.get(4));
+            variables = bestOrderVariables;
+        } else {
+            if (order.equals("random order")) {
+                Random random = new Random();
+                Collections.shuffle(variables);
+            }
+        }
+        System.out.println(variables);
         int[] experimentData = {0, 0};
         int[] experimentData1 = {0, 0};
-        long startTime = System.currentTimeMillis();
-//        if (solver.ac3(variables, constraints, unaryConstraints, experimentData)) {
-//            solver.forwardChecking(variables, constraints, experimentData1);
+        
+        if (ac3(variables, constraints, unaryConstraints, experimentData)) {
+            long startTime = System.currentTimeMillis();
+            if (forwardChecking(variables, constraints, 0, experimentData1)) {
+                showSolution(variables);
+            } else {
+                System.out.println("No solution found.");
+            }
+            long timeTaken = System.currentTimeMillis() - startTime;
+        System.out.println("Experiment static ordering " + name);
+        System.out.println("Nodes visited: " + experimentData1[0] + ", arcs revised: " + experimentData1[1] + ", time taken: " + timeTaken);
+            for(DecisionVariable variable: variables) {
+                variable.setInitialParameters();
+            }
+            for(int i = 0; i<experimentData1.length; i++) {
+                experimentData1[i] = 0;
+            }
+            startTime = System.currentTimeMillis();
+            if (forwardChecking(variables, constraints, experimentData1)) {
+                showSolution(variables);
+            } else {
+                System.out.println("No solution found.");
+            }
+            timeTaken = System.currentTimeMillis() - startTime;
+        System.out.println("Experiment smallest domain first " + name);
+        System.out.println("Nodes visited: " + experimentData1[0] + ", arcs revised: " + experimentData1[1] + ", time taken: " + timeTaken);
+        } else {
+            System.out.println("No solution found.");
+        }
+        
+    }
+
+    public static void main(String[] args) {
+        Solver solver = new Solver();
+
+        solver.runExperiment("natural order");
+        solver.runExperiment("best order");
+
+        //experimentData 148 1133
+//
+//        int[] experimentData2 = {0, 0};
+//        int[] experimentData3 = {0, 0};
+//        startTime = System.currentTimeMillis();
+//        if (solver.ac3(variables, constraints, unaryConstraints,experimentData2)) {
+//            solver.forwardChecking(variables, constraints, 0,experimentData3);
 //            solver.showSolution(variables);
 //        } else {
 //            System.out.println("No solution found.");
 //        }
-        long timeTaken = System.currentTimeMillis() - startTime;
-//        System.out.println("experimentData " + experimentData1[0] + " " + experimentData1[1]);
+//        timeTaken = System.currentTimeMillis() - startTime;
+//        System.out.println("experimentData "+experimentData3[0]+ " "+experimentData3[1]);
+//        //experimentData 237 1531
 //        System.out.println("Time taken: " + timeTaken);
-        //experimentData 148 1133
-
-        int[] experimentData2 = {0, 0};
-        int[] experimentData3 = {0, 0};
-        startTime = System.currentTimeMillis();
-        if (solver.ac3(variables, constraints, unaryConstraints,experimentData2)) {
-            solver.forwardChecking(variables, constraints, 0,experimentData3);
-            solver.showSolution(variables);
-        } else {
-            System.out.println("No solution found.");
-        }
-        timeTaken = System.currentTimeMillis() - startTime;
-        System.out.println("experimentData "+experimentData3[0]+ " "+experimentData3[1]);
-        //experimentData 237 1531
-        System.out.println("Time taken: " + timeTaken);
-
-    }
-
-    public void crystalMaze(ArrayList<DecisionVariable> variables, ArrayList<Constraint> constraints,
-            ArrayList<Constraint> unaryConstraints) {
-        int size = 8;
-        for (int i = 0; i < size; i++) {
-            String name = "x" + i;
-            variables.add(new DecisionVariable(name, ProblemReader.readRange("int(0-7)")));
-        }
-        for (int i = 0; i < variables.size(); i++) {
-            for (int j = i + 1; j < variables.size(); j++) {
-                Constraint constraint = new Constraint(new Expression(variables.get(i), true),
-                        new Expression(variables.get(j), true), Comparator.NEQ);
-                constraints.add(constraint);
-            }
-        }
-        Expression ex1 = new Expression(variables.get(0), Operator.PLUS, 1, true);
-        Expression ex2 = new Expression(variables.get(0), Operator.MINUS, 1, true);
-        constraints.add(new Constraint(ex1, new Expression(variables.get(1), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex2, new Expression(variables.get(1), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex1, new Expression(variables.get(3), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex2, new Expression(variables.get(3), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex1, new Expression(variables.get(2), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex2, new Expression(variables.get(2), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex1, new Expression(variables.get(4), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex2, new Expression(variables.get(4), true), Comparator.NEQ));
-        ex1 = new Expression(variables.get(1), Operator.PLUS, 1, true);
-        ex2 = new Expression(variables.get(1), Operator.MINUS, 1, true);
-        constraints.add(new Constraint(ex1, new Expression(variables.get(4), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex2, new Expression(variables.get(4), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex1, new Expression(variables.get(3), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex2, new Expression(variables.get(3), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex1, new Expression(variables.get(5), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex2, new Expression(variables.get(5), true), Comparator.NEQ));
-        ex1 = new Expression(variables.get(2), Operator.PLUS, 1, true);
-        ex2 = new Expression(variables.get(2), Operator.MINUS, 1, true);
-        constraints.add(new Constraint(ex1, new Expression(variables.get(3), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex2, new Expression(variables.get(3), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex1, new Expression(variables.get(6), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex2, new Expression(variables.get(6), true), Comparator.NEQ));
-        ex1 = new Expression(variables.get(3), Operator.PLUS, 1, true);
-        ex2 = new Expression(variables.get(3), Operator.MINUS, 1, true);
-        constraints.add(new Constraint(ex1, new Expression(variables.get(4), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex2, new Expression(variables.get(4), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex1, new Expression(variables.get(7), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex2, new Expression(variables.get(7), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex1, new Expression(variables.get(6), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex2, new Expression(variables.get(6), true), Comparator.NEQ));
-        ex1 = new Expression(variables.get(4), Operator.PLUS, 1, true);
-        ex2 = new Expression(variables.get(4), Operator.MINUS, 1, true);
-        constraints.add(new Constraint(ex1, new Expression(variables.get(5), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex2, new Expression(variables.get(5), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex1, new Expression(variables.get(7), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex2, new Expression(variables.get(7), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex1, new Expression(variables.get(6), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex2, new Expression(variables.get(6), true), Comparator.NEQ));
-        ex1 = new Expression(variables.get(5), Operator.PLUS, 1, true);
-        ex2 = new Expression(variables.get(5), Operator.MINUS, 1, true);
-        constraints.add(new Constraint(ex1, new Expression(variables.get(7), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex2, new Expression(variables.get(7), true), Comparator.NEQ));
-        ex1 = new Expression(variables.get(6), Operator.PLUS, 1, true);
-        ex2 = new Expression(variables.get(6), Operator.MINUS, 1, true);
-        constraints.add(new Constraint(ex1, new Expression(variables.get(7), true), Comparator.NEQ));
-        constraints.add(new Constraint(ex2, new Expression(variables.get(7), true), Comparator.NEQ));
-
     }
 
 }
